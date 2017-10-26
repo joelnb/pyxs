@@ -75,3 +75,7 @@ class UnexpectedPacket(ConnectionError):
     ``op = Op.READ`` the incoming packet is expected to have
     ``op = Op.READ`` as well.
     """
+
+
+class WindowsDriverError(PyXSError):
+    """Windows specific error when using native API to locate xenbus device"""

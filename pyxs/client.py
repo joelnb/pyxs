@@ -19,6 +19,7 @@ __all__ = ["Router", "Client", "Monitor"]
 
 import copy
 import errno
+import os
 import posixpath
 import re
 import socket
@@ -79,6 +80,7 @@ class Router(object):
 
         .. _issue8844: https://bugs.python.org/issue8844
     """
+
     def __init__(self, connection):
         self.r_terminator, self.w_terminator = socket.socketpair()
         self.connection = connection
@@ -260,10 +262,23 @@ class Client(object):
 
     def __init__(self, unix_socket_path=None, xen_bus_path=None, router=None):
         if router is None:
-            if unix_socket_path or not xen_bus_path:
-                connection = UnixSocketConnection(unix_socket_path)
-            else:
-                connection = XenBusConnection(xen_bus_path)
+            if os.name in ["posix"]:
+                if unix_socket_path or not xen_bus_path:
+                    connection = UnixSocketConnection(unix_socket_path)
+                else:
+                    connection = XenBusConnection(xen_bus_path)
+            if os.name in ["nt"]:
+                # There are two windows pv driver projects, examine WMI
+                # classes to try and determine which one we want to use.
+                import wmi
+                try:
+                    root = wmi.WMI(moniker="//./root/wmi", find_classes=False)
+                    root.XenProjectXenStoreBase()
+                    from .windows import WinPVPacketConnection
+                    connection = WinPVPacketConnection()
+                except AttributeError:
+                    from .windows import GPLPVPacketConnection
+                    connection = GPLPVPacketConnection()
 
             router = Router(connection)
 
